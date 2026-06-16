@@ -1,13 +1,13 @@
-use std::sync::Arc;
-
-use log::{LevelFilter, info};
 use russh::keys::*;
 use russh::*;
 use russh_sftp::client::SftpSession;
 use russh_sftp::protocol::OpenFlags;
 use std::env;
+use std::sync::Arc;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tracing::{debug, error, info, trace, warn};
+use tracing_subscriber::EnvFilter;
 
 struct Client;
 
@@ -25,6 +25,17 @@ impl client::Handler for Client {
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
+    let file_appender = tracing_appender::rolling::never("./logs", "app.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::fmt()
+        .with_writer(non_blocking)
+        .with_ansi(false)
+        .with_env_filter(EnvFilter::new("info"))
+        .init();
+
+    info!("--- SFTP Client gestartet ---");
+
     let args: Vec<String> = env::args().collect();
 
     // Wenn der Pfad nicht übergeben wurde.
@@ -40,8 +51,6 @@ async fn main() -> Result<(), anyhow::Error> {
         .unwrap_or(22);
     let username = args[2].clone();
     let password = args[3].clone();
-
-    env_logger::builder().filter_level(LevelFilter::Info).init();
 
     let config = russh::client::Config::default();
     let sh = Client {};
@@ -60,6 +69,7 @@ async fn main() -> Result<(), anyhow::Error> {
     channel.request_subsystem(true, "sftp").await?;
     let sftp = SftpSession::new(channel.into_stream()).await?;
 
+    info!("--- SFTP Client gestoppt ---");
     Ok(())
 }
 
