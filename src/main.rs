@@ -73,7 +73,7 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-async fn upload_file(
+async fn upload_file_raw(
     local_path: &str,
     remote_path: &str,
     sftp: &SftpSession,
@@ -99,6 +99,25 @@ async fn upload_file(
     Ok(())
 }
 
+async fn upload_file(
+    local_path: &str,
+    remote_path: &str,
+    sftp: &SftpSession,
+    delete_local_after_upload: bool,
+) {
+    match upload_file_raw(local_path, remote_path, sftp, delete_local_after_upload).await {
+        Ok(_) => {
+            info!("Upload successful: {} to {}", local_path, remote_path);
+        }
+        Err(e) => {
+            warn!(
+                "Upload error: {} to {}. Error: {}",
+                local_path, remote_path, e
+            );
+        }
+    }
+}
+
 async fn upload_directory(
     local_dir: &str,
     remote_dir: &str,
@@ -117,13 +136,13 @@ async fn upload_directory(
                 sftp,
                 delete_local_after_upload,
             )
-            .await?;
+            .await;
         }
     }
     Ok(())
 }
 
-async fn download_file(
+async fn download_file_raw(
     remote_path: &str,
     local_path: &str,
     sftp: &SftpSession,
@@ -150,6 +169,25 @@ async fn download_file(
     Ok(())
 }
 
+async fn download_file(
+    remote_path: &str,
+    local_path: &str,
+    sftp: &SftpSession,
+    delete_remote_after_download: bool,
+) {
+    match download_file_raw(remote_path, local_path, sftp, delete_remote_after_download).await {
+        Ok(_) => {
+            info!("Download successful: {} to {}", remote_path, local_path);
+        }
+        Err(e) => {
+            warn!(
+                "Download error: {} to {}. Error: {}",
+                remote_path, local_path, e
+            );
+        }
+    }
+}
+
 async fn download_directory(
     remote_dir: &str,
     local_dir: &str,
@@ -168,7 +206,7 @@ async fn download_directory(
                 sftp,
                 delete_remote_after_download,
             )
-            .await?;
+            .await;
         }
     }
     Ok(())
