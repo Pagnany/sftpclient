@@ -34,7 +34,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .with_env_filter(EnvFilter::new("info"))
         .init();
 
-    info!("--- SFTP Client gestartet ---");
+    info!("--- SFTP Client started ---");
 
     let args: Vec<String> = env::args().collect();
 
@@ -69,14 +69,14 @@ async fn main() -> Result<(), anyhow::Error> {
     channel.request_subsystem(true, "sftp").await?;
     let sftp = SftpSession::new(channel.into_stream()).await?;
 
-    info!("--- SFTP Client gestoppt ---");
+    info!("--- SFTP Client finished ---");
     Ok(())
 }
 
 async fn upload_file_raw(
+    sftp: &SftpSession,
     local_path: &str,
     remote_path: &str,
-    sftp: &SftpSession,
     delete_local_after_upload: bool,
 ) -> Result<(), anyhow::Error> {
     let mut local_file = File::open(local_path).await?;
@@ -100,12 +100,12 @@ async fn upload_file_raw(
 }
 
 async fn upload_file(
+    sftp: &SftpSession,
     local_path: &str,
     remote_path: &str,
-    sftp: &SftpSession,
     delete_local_after_upload: bool,
 ) {
-    match upload_file_raw(local_path, remote_path, sftp, delete_local_after_upload).await {
+    match upload_file_raw(sftp, local_path, remote_path, delete_local_after_upload).await {
         Ok(_) => {
             info!("Upload successful: {} to {}", local_path, remote_path);
         }
@@ -119,9 +119,9 @@ async fn upload_file(
 }
 
 async fn upload_directory(
+    sftp: &SftpSession,
     local_dir: &str,
     remote_dir: &str,
-    sftp: &SftpSession,
     delete_local_after_upload: bool,
 ) -> Result<(), anyhow::Error> {
     let mut entries = tokio::fs::read_dir(local_dir).await?;
@@ -131,9 +131,9 @@ async fn upload_directory(
             let file_name = path.file_name().unwrap().to_str().unwrap();
             let remote_path = format!("{}/{}", remote_dir, file_name);
             upload_file(
+                sftp,
                 path.to_str().unwrap(),
                 &remote_path,
-                sftp,
                 delete_local_after_upload,
             )
             .await;
@@ -143,9 +143,9 @@ async fn upload_directory(
 }
 
 async fn download_file_raw(
+    sftp: &SftpSession,
     remote_path: &str,
     local_path: &str,
-    sftp: &SftpSession,
     delete_remote_after_download: bool,
 ) -> Result<(), anyhow::Error> {
     if !sftp.try_exists(remote_path).await? {
@@ -170,12 +170,12 @@ async fn download_file_raw(
 }
 
 async fn download_file(
+    sftp: &SftpSession,
     remote_path: &str,
     local_path: &str,
-    sftp: &SftpSession,
     delete_remote_after_download: bool,
 ) {
-    match download_file_raw(remote_path, local_path, sftp, delete_remote_after_download).await {
+    match download_file_raw(sftp, remote_path, local_path, delete_remote_after_download).await {
         Ok(_) => {
             info!("Download successful: {} to {}", remote_path, local_path);
         }
@@ -189,9 +189,9 @@ async fn download_file(
 }
 
 async fn download_directory(
+    sftp: &SftpSession,
     remote_dir: &str,
     local_dir: &str,
-    sftp: &SftpSession,
     delete_remote_after_download: bool,
 ) -> Result<(), anyhow::Error> {
     let entries = sftp.read_dir(remote_dir).await?;
@@ -201,9 +201,9 @@ async fn download_directory(
             let remote_path = format!("{}/{}", remote_dir, file_name);
             let local_path = format!("{}/{}", local_dir, file_name);
             download_file(
+                sftp,
                 &remote_path,
                 &local_path,
-                sftp,
                 delete_remote_after_download,
             )
             .await;
